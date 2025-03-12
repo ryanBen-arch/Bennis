@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翰林羽球排場系統</title>
+  <!-- 引入 ResponsiveVoice 外部語音庫 -->
+  <script src="https://code.responsivevoice.org/responsivevoice.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #d0e8ff;
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+    }
+    .section {
+      border: 2px solid #004d99;
+      background-color: #ffffff;
+      padding: 15px;
+      border-radius: 10px;
+      width: 30%;
+      box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+    }
+    .court-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .court {
+      background-color: #009933;
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 30%;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+    }
+    /* 新增選手、批量新增選手按鈕：橘黃色 #FF9933 */
+    .add-player-btn {
+      background-color: #FF9933;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    .add-player-btn:hover {
+      background-color: #FFB347;
+    }
+    /* 加入預備(及回預備區)按鈕：綠色 */
+    .move-to-ready-btn {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    .move-to-ready-btn:hover {
+      background-color: #218838;
+    }
+    /* 刪除按鈕：紅色 */
+    .delete-btn {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
+    /* 休息按鈕：灰色 */
+    .rest-btn {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    .rest-btn:hover {
+      background-color: #5a6268;
+    }
+    /* 開始排場按鈕：保持原樣 */
+    .start-match-button {
+      background-color: #007bff;
+      margin-bottom: 10px;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    .start-match-button:hover {
+      background-color: #0069d9;
+    }
+    /* 下場按鈕：背景黃色、黑色文字 */
+    .end-match-btn {
+      background-color: #FFFF00;
+      color: black;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: 0.3s;
+    }
+    .end-match-btn:hover {
+      background-color: #FFEE58;
+    }
+    textarea {
+      width: 90%;
+      height: 100px;
+      margin-top: 5px;
+      resize: vertical;
+      font-size: 14px;
+      padding: 5px;
+    }
+    h1 {
+      color: #004d99;
+    }
+  </style>
+</head>
+<body>
+  <h1>翰林羽球排場系統</h1>
+  <div class="court-container" id="courts"></div>
+  <div class="container">
+    <div class="section">
+      <h2>新增選手</h2>
+      <!-- 單筆新增 -->
+      <div>
+        <label>選手名稱：</label> <input type="text" id="playerName">
+      </div>
+      <div>
+        <label>等級：</label> <input type="number" id="playerLevel" step="0.1">
+      </div>
+      <button class="add-player-btn" onclick="addPlayer()">新增選手</button>
+      <hr>
+      <!-- 批量新增 -->
+      <div>
+        <label>批量新增 (一列一個選手，格式：姓名加等級，例如：小花3)</label>
+        <textarea id="batchPlayers" placeholder="小花3&#10;小魚4&#10;小名2&#10;小美3&#10;小至5&#10;小鈞5.5"></textarea>
+      </div>
+      <button class="add-player-btn" onclick="addBatchPlayers()">批量新增選手</button>
+      <h2>選手列表</h2>
+      <div id="playerList"></div>
+    </div>
+    <div class="section">
+      <!-- 將開始排場按鈕移至預備區標題上方 -->
+      <button class="start-match-button" onclick="generateMatches()">開始排場</button>
+      <h2>預備區</h2>
+      <div id="readyList"></div>
+      <h2>休息區</h2>
+      <div id="restList"></div>
+    </div>
+    <div class="section">
+      <h2>歷史比賽</h2>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <script>
+    // 全域變數
+    let players = [];
+    let readyPlayers = [];
+    let restingPlayers = [];
+    let courts = [[], [], []];
+    let historyMatches = [];
+    let lastPairings = new Set();
+    let pairingHistory = {};
+
+    function updateLists() {
+      document.getElementById("playerList").innerHTML = players.map(p => `
+        <div>
+          ${p.name} (${p.matches})
+          <button class="move-to-ready-btn" onclick="moveToReady('${p.name}')">加入預備</button>
+          <button class="delete-btn" onclick="removePlayer('${p.name}')">刪除</button>
+        </div>
+      `).join("");
+
+      document.getElementById("readyList").innerHTML = readyPlayers.map(p => `
+        <div>
+          ${p.name} (${p.matches})
+          <button class="rest-btn" onclick="moveToRest('${p.name}')">休息</button>
+        </div>
+      `).join("");
+
+      document.getElementById("restList").innerHTML = restingPlayers.map(p => `
+        <div>
+          ${p.name} (${p.matches})
+          <button class="move-to-ready-btn" onclick="moveToReady('${p.name}')">回預備區</button>
+        </div>
+      `).join("");
+    }
+
+    function addPlayer() {
+      let name = document.getElementById("playerName").value.trim();
+      let level = parseFloat(document.getElementById("playerLevel").value);
+      if (name === "" || isNaN(level)) {
+        alert("請輸入有效的選手名稱和等級！");
+        return;
+      }
+      if (!players.some(p => p.name === name)) {
+        players.push({ name, level, matches: 0 });
+        document.getElementById("playerName").value = "";
+        updateLists();
+        updateHistoryDisplay();
+        updateCourtsDisplay();
+      } else {
+        alert("選手名稱已存在！");
+      }
+    }
+
+    function addBatchPlayers() {
+      const text = document.getElementById("batchPlayers").value;
+      if (!text.trim()) {
+        alert("請貼上選手資料！");
+        return;
+      }
+      const lines = text.split(/\r?\n/);
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        const match = line.match(/^(\D+)([\d.]+)$/);
+        if (match) {
+          const name = match[1].trim();
+          const level = parseFloat(match[2]);
+          if (!players.some(p => p.name === name)) {
+            players.push({ name, level, matches: 0 });
+          }
+        } else {
+          console.warn(`格式錯誤: ${line}`);
+        }
+      }
+      document.getElementById("batchPlayers").value = "";
+      updateLists();
+      updateHistoryDisplay();
+      updateCourtsDisplay();
+    }
+
+    function removePlayer(name) {
+      players = players.filter(p => p.name !== name);
+      readyPlayers = readyPlayers.filter(p => p.name !== name);
+      restingPlayers = restingPlayers.filter(p => p.name !== name);
+      updateLists();
+    }
+
+    /* 
+      moveToReady：
+      從選手列表或休息區移入預備區時，
+      強制將新進選手的比賽次數調整為目前預備區及各場上所有玩家中的最低比賽次數。
+    */
+    function moveToReady(name) {
+      let player = players.find(p => p.name === name) || restingPlayers.find(p => p.name === name);
+      if (player) {
+        players = players.filter(p => p.name !== name);
+        restingPlayers = restingPlayers.filter(p => p.name !== name);
+        let candidateList = [...readyPlayers];
+        for (let court of courts) {
+          candidateList = candidateList.concat(court);
+        }
+        if (candidateList.length > 0) {
+          let minMatches = Math.min(...candidateList.map(p => p.matches));
+          player.matches = minMatches;
+        }
+        readyPlayers.push(player);
+        updateLists();
+      }
+    }
+
+    function moveToRest(name) {
+      let player = readyPlayers.find(p => p.name === name);
+      if (player) {
+        readyPlayers = readyPlayers.filter(p => p.name !== name);
+        restingPlayers.push(player);
+        updateLists();
+      }
+    }
+
+    function updateCourtsDisplay() {
+      document.getElementById("courts").innerHTML = courts.map((court, i) => {
+        let team1 = court.length >= 3 ? `${court[0].name} (${court[0].matches}) 與 ${court[2].name} (${court[2].matches})` : "";
+        let team2 = court.length >= 4 ? `${court[1].name} (${court[1].matches}) 與 ${court[3].name} (${court[3].matches})` : "";
+        return `<div class='court'>場地 ${i + 1}: ${team1} / ${team2} <button class="end-match-btn" onclick='endMatch(${i})'>下場</button></div>`;
+      }).join("");
+    }
+
+    function getPairKey(name1, name2) {
+      return [name1, name2].sort().join("-");
+    }
+
+    function updatePairingHistory(teamKey) {
+      pairingHistory[teamKey] = (pairingHistory[teamKey] || 0) + 1;
+    }
+
+    // 使用回溯法找出最佳的 4 人組合，並計算搭檔重複分數
+    function findOptimalCombination(sortedReady) {
+      let bestCombination = null;
+      let bestScore = Infinity;
+      let currentCombination = [];
+
+      function backtrack(start) {
+        if (currentCombination.length === 4) {
+          let team1Key = getPairKey(currentCombination[0].name, currentCombination[2].name);
+          let team2Key = getPairKey(currentCombination[1].name, currentCombination[3].name);
+          let score = (pairingHistory[team1Key] || 0) + (pairingHistory[team2Key] || 0);
+          if (score < bestScore) {
+            bestScore = score;
+            bestCombination = currentCombination.slice();
+          }
+          return;
+        }
+        for (let i = start; i < sortedReady.length; i++) {
+          currentCombination.push(sortedReady[i]);
+          backtrack(i + 1);
+          currentCombination.pop();
+        }
+      }
+      backtrack(0);
+      return bestCombination;
+    }
+
+    // 語音播放功能：當新組合上場時，依照候選組合順序讀出 candidate[0]、candidate[1]、candidate[2]、candidate[3] 的姓名，
+    // 播放語音訊息並重複播放一次（共2次），使用 ResponsiveVoice 播放語音。
+    function sayCourt(courtIndex, candidate) {
+      // 語音順序：直接依候選組合順序依次讀出
+      let names = candidate[0].name + "、" + candidate[1].name + "、" + candidate[2].name + "、" + candidate[3].name;
+      let message = `場地 ${courtIndex + 1}，${names}，請上場`;
+      responsiveVoice.speak(message, "Chinese Female", {
+        onend: function() {
+          responsiveVoice.speak(message, "Chinese Female");
+        }
+      });
+    }
+
+    function generateMatches() {
+      if (readyPlayers.length < 4) {
+        alert('預備區至少需要4人才可開始排場！');
+        return;
+      }
+      let sortedReady = [...readyPlayers].sort((a, b) => a.matches - b.matches);
+      for (let i = 0; i < courts.length; i++) {
+        if (courts[i].length === 0 && sortedReady.length >= 4) {
+          let candidate = findOptimalCombination(sortedReady);
+          if (candidate) {
+            candidate.forEach(player => {
+              readyPlayers = readyPlayers.filter(p => p.name !== player.name);
+            });
+            let team1Key = getPairKey(candidate[0].name, candidate[2].name);
+            let team2Key = getPairKey(candidate[1].name, candidate[3].name);
+            lastPairings = new Set([team1Key, team2Key]);
+            courts[i] = candidate;
+            // 語音播報上場訊息，播放2次
+            sayCourt(i, candidate);
+            sortedReady = [...readyPlayers].sort((a, b) => a.matches - b.matches);
+          } else {
+            alert("無法找到符合搭檔條件的候選組合！");
+          }
+        }
+      }
+      updateLists();
+      updateCourtsDisplay();
+    }
+
+    function endMatch(courtIndex) {
+      let playersToReady = courts[courtIndex];
+      playersToReady.forEach(player => player.matches++);
+      if (playersToReady.length >= 4) {
+        let team1Key = getPairKey(playersToReady[0].name, playersToReady[2].name);
+        let team2Key = getPairKey(playersToReady[1].name, playersToReady[3].name);
+        updatePairingHistory(team1Key);
+        updatePairingHistory(team2Key);
+      }
+      historyMatches.unshift(playersToReady.map(p => `${p.name} (${p.matches})`).join(' / '));
+      if (historyMatches.length > 3) historyMatches.pop();
+      courts[courtIndex] = [];
+      readyPlayers.push(...playersToReady);
+      updateLists();
+      updateCourtsDisplay();
+      updateHistoryDisplay();
+      generateMatches();
+    }
+
+    function updateHistoryDisplay() {
+      document.getElementById("history").innerHTML = historyMatches.map(match => `<div>${match}</div>`).join('');
+    }
+
+    window.addPlayer = addPlayer;
+    window.removePlayer = removePlayer;
+    window.moveToReady = moveToReady;
+    window.moveToRest = moveToRest;
+    window.generateMatches = generateMatches;
+    window.endMatch = endMatch;
+
+    updateLists();
+    updateCourtsDisplay();
+    updateHistoryDisplay();
+  </script>
+</body>
+</html>
